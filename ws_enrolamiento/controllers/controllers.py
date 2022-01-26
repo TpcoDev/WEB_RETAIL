@@ -8,9 +8,9 @@ from jsonschema import validate
 import json
 
 
-class OdooController(http.Controller):
+class EnrolamientoController(http.Controller):
 
-    @http.route('/tpco/odoo/enrolamiento', auth="public", type="json", method=['POST'], csrf=False)
+    @http.route('/tpco/odoo/ws001', auth="public", type="json", method=['POST'], csrf=False)
     def enrolamiento(self, **post):
 
         post = json.loads(request.httprequest.data)
@@ -39,81 +39,75 @@ class OdooController(http.Controller):
             request.uid = user_id
             if user_id:
                 res['token'] = as_token
-                post = post['params']
 
-                product_tmpl = http.request.env['product.template']
-                tipo_prenda = http.request.env['tipo.prenda']
-                marca = http.request.env['marca']
-                tamanno = http.request.env['tamanno']
-                origen = http.request.env['origen']
-                color = http.request.env['color']
-                genero = http.request.env['genero']
+                product_tmpl = request.env['product.template']
+                tipo_prenda = request.env['tipo.prenda']
+                marca = request.env['marca']
+                tamanno = request.env['tamanno']
+                origen = request.env['origen']
+                color = request.env['color']
+                genero = request.env['genero']
 
-                obj_tipo_prenda = tipo_prenda.sudo().search(
-                    [('name', '=', post['params']['detalleActivos'][0]['tipoPrenda'])])
-                if not obj_tipo_prenda:
-                    tipo_prenda_nuevo = tipo_prenda.sudo().create(
-                        {'name': post['params']['detalleActivos'][0]['tipoPrenda']})
-                    tipo_prenda_id = tipo_prenda_nuevo.id
+                for detalle in post['params']['detalleActivos']:
+                    product_tmpl_nuevo = product_tmpl.search([('default_code', '=', detalle['SKU'])], limit=1)
+                    if not product_tmpl_nuevo:
+                        obj_tipo_prenda = tipo_prenda.sudo().search(
+                            [('name', '=', detalle['tipoPrenda'])])
+                        if not obj_tipo_prenda:
+                            obj_tipo_prenda = tipo_prenda.sudo().create(
+                                {'name': detalle['tipoPrenda']})
+
+                        obj_marca = marca.sudo().search([('name', '=', detalle['marca'])])
+                        if not obj_marca:
+                            obj_marca = marca.sudo().create({'name': detalle['marca']})
+
+                        obj_tamanno = tamanno.sudo().search(
+                            [('name', '=', detalle['tamanno'])])
+                        if not obj_tamanno:
+                            obj_tamanno = tamanno.sudo().create(
+                                {'name': detalle['tamanno']})
+
+                        obj_origen = tipo_prenda.sudo().search(
+                            [('name', '=', detalle['origen'])])
+                        if not obj_origen:
+                            obj_origen = origen.sudo().create({'name': detalle['origen']})
+
+                        obj_color = color.sudo().search([('name', '=', detalle['color'])])
+                        if not obj_color:
+                            obj_color = color.sudo().create({'name': detalle['color']})
+
+                        obj_genero = genero.sudo().search(
+                            [('name', '=', detalle['genero'])])
+                        if not obj_genero:
+                            obj_genero = genero.sudo().create({'name': detalle['genero']})
+
+                        product_tmpl_nuevo = product_tmpl.sudo().create({
+                            'name': detalle['nombreActivo'],
+                            'default_code': detalle['SKU'],
+                            'tipo_prenda_id': obj_tipo_prenda.id,
+                            'marca_id': obj_marca.id,
+                            'tamanno_id': obj_tamanno.id,
+                            'origen_id': obj_origen.id,
+                            'color_id': obj_color.id,
+                            'genero_id': obj_genero.id,
+                            'list_price': 1.00,
+                            'standard_price': 0.00,
+                            'use_expiration_date': False,
+                            'tracking': 'serial',
+                            'purchase_ok': True,
+                            'sale_ok': True,
+                            'type': 'product'
+
+                        })
+
+                    return mensaje_correcto
                 else:
-                    tipo_prenda_id = obj_tipo_prenda.id
-
-                obj_marca = marca.sudo().search([('name', '=', post['params']['detalleActivos'][0]['marca'])])
-                if not obj_marca:
-                    marca_nuevo = marca.sudo().create({'name': post['params']['detalleActivos'][0]['marca']})
-                    marca_id = marca_nuevo.id
-                else:
-                    marca_id = obj_marca.id
-
-                obj_tamanno = tamanno.sudo().search([('name', '=', post['params']['detalleActivos'][0]['tamaño'])])
-                if not obj_tamanno:
-                    tamanno_nuevo = tamanno.sudo().create({'name': post['params']['detalleActivos'][0]['tamaño']})
-                    tamanno_id = tamanno_nuevo.id
-                else:
-                    tamanno_id = obj_tamanno.id
-
-                obj_origen = tipo_prenda.sudo().search([('name', '=', post['params']['detalleActivos'][0]['origen'])])
-                if not obj_origen:
-                    origen_nuevo = origen.sudo().create({'name': post['params']['detalleActivos'][0]['origen']})
-                    origen_id = origen_nuevo.id
-                else:
-                    origen_id = obj_origen.id
-
-                obj_color = color.sudo().search([('name', '=', post['params']['detalleActivos'][0]['color'])])
-                if not obj_color:
-                    color_nuevo = color.sudo().create({'name': post['params']['detalleActivos'][0]['color']})
-                    color_id = color_nuevo.id
-                else:
-                    color_id = obj_color.id
-
-                obj_genero = genero.sudo().search([('name', '=', post['params']['detalleActivos'][0]['genero'])])
-                if not obj_genero:
-                    genero_nuevo = genero.sudo().create({'name': post['params']['detalleActivos'][0]['genero']})
-                    genero_id = genero_nuevo.id
-                else:
-                    genero_id = obj_genero.id
-
-                product_tmpl_nuevo = product_tmpl.sudo().create({
-                    'name': post['params']['detalleActivos'][0]['nombreActivo'],
-                    'tipo_prenda_id': tipo_prenda_id,
-                    'marca_id': marca_id,
-                    'tamanno_id': tamanno_id,
-                    'origen_id': origen_id,
-                    'color_id': color_id,
-                    'genero_id': genero_id
-                })
-
-                return {
-                    "idEnrolamiento": product_tmpl_nuevo.id,
-                    "fechaOperacion": product_tmpl_nuevo.create_date,
-                    "detalleActivos": [
-                        {
-                            "EPCCode": post['params']['detalleActivos'][0]['DetalleEpc'][0]['EPCCode'],
-                            "codigo": 0,
-                            "mensaje": "Activo enrolado"
-                        }
-                    ]
-                }
+                    mensaje_error = {
+                        "Token": as_token,
+                        "RespCode": -3,
+                        "RespMessage": "Rechazado: Ya existe el registro que pretende crear"
+                    }
+                    return mensaje_error
 
         except Exception as e:
             mensaje_error = {
@@ -121,6 +115,5 @@ class OdooController(http.Controller):
                 "RespCode": -5,
                 "RespMessage": "Rechazado: Autenticación fallida"
             }
-            # self.create_message_log("ws001", as_token, post, 'RECHAZADO', str(e))
             mensaje_error['RespMessage'] = f"Error: {str(e)}"
             return mensaje_error

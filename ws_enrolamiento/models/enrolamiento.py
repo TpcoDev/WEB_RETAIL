@@ -1,9 +1,5 @@
 from odoo import api, fields, models, _
 
-# class ProductoEnrolamiento(models.Model):
-#     _inherit = 'stock.picking'
-#
-#     idHandheld = fields.Char()
 
 class ProductoEnrolamiento(models.Model):
     _inherit = 'product.template'
@@ -17,30 +13,36 @@ class ProductoEnrolamiento(models.Model):
     genero_id = fields.Many2one('genero', 'Género')
     idHandheld = fields.Char('Handheld')
 
+
 class TipoPrenda(models.Model):
     _name = "tipo.prenda"
 
     name = fields.Char(string='Nombre', required=True)
+
 
 class Marca(models.Model):
     _name = "marca"
 
     name = fields.Char(string='Nombre', required=True)
 
+
 class Tamanno(models.Model):
     _name = "tamanno"
 
     name = fields.Char(string='Nombre', required=True)
+
 
 class Origen(models.Model):
     _name = "origen"
 
     name = fields.Char(string='Nombre', required=True)
 
+
 class Color(models.Model):
     _name = "color"
 
     name = fields.Char(string='Nombre', required=True)
+
 
 class Genero(models.Model):
     _name = "genero"
