@@ -5,8 +5,8 @@ import json
 
 class OdooController(http.Controller):
 
-    @http.route('/tpco/odoo/enrolamiento', auth="public", type="json", method=['POST'], csrf=False)
-    def enrolamiento(self, **post):
+    @http.route('/tpco/odoo/activos/conciliation', auth="public", type="json", method=['POST'], csrf=False)
+    def activo_conciliation(self, **post):
         post = json.loads(http.request.httprequest.data)
         product_tmpl = http.request.env['product.template']
         tipo_prenda = http.request.env['tipo.prenda']
@@ -73,7 +73,7 @@ class OdooController(http.Controller):
             "fechaOperacion": product_tmpl_nuevo.create_date,
             "detalleActivos": [
                 {
-                    "EPCCode":  post['params']['detalleActivos'][0]['DetalleEpc'][0]['EPCCode'],
+                    "EPCCode": post['params']['detalleActivos'][0]['DetalleEpc'][0]['EPCCode'],
                     "codigo": 0,
                     "mensaje": "Activo enrolado"
                 }

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "WS Activos",
+    'name': "WS Sync Activos",
     'description': """
            """,
 
