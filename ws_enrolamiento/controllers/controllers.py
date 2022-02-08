@@ -41,7 +41,6 @@ class EnrolamientoController(http.Controller):
                 res['token'] = as_token
 
                 product_tmpl = request.env['product.template']
-                production_lot = request.env['stock.production.lot']
                 tipo_prenda = request.env['tipo.prenda']
                 marca = request.env['marca']
                 tamanno = request.env['tamanno']
@@ -101,35 +100,14 @@ class EnrolamientoController(http.Controller):
 
                         })
 
-                    for epc in detalle['DetalleEpc']:
-                        production_lot_nuevo = production_lot.sudo().search([('name', '=', epc['EPCCode'])],
-                                                                            limit=1)
-                        if not production_lot_nuevo:
-                            production_lot_nuevo = production_lot.sudo().create({
-                                'product_id': product_tmpl_nuevo.id,
-                                'name': epc['EPCCode'],
-                                'product_qty': 1
-                            })
-                        else:
-                            mensaje_error = {
-                                "Token": as_token,
-                                "RespCode": -3,
-                                "RespMessage": "Rechazado: Ya existe el registro que pretende crear"
-                            }
-                            return mensaje_error
-
-                    return {
-                        "idEnrolamiento": product_tmpl_nuevo.id,
-                        "fechaOperacion": product_tmpl_nuevo.create_date,
-                        "detalleActivos": [
-                            {
-                                "EPCCode": detalle['DetalleEpc'][0]['EPCCode'],
-                                "codigo": 0,
-                                "mensaje": "Activo enrolado"
-                            }
-                        ]
+                    return mensaje_correcto
+                else:
+                    mensaje_error = {
+                        "Token": as_token,
+                        "RespCode": -3,
+                        "RespMessage": "Rechazado: Ya existe el registro que pretende crear"
                     }
-
+                    return mensaje_error
 
         except Exception as e:
             mensaje_error = {
