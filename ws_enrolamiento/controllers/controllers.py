@@ -26,6 +26,11 @@ class EnrolamientoController(http.Controller):
             "RespCode": 0,
             "RespMessage": "Producto se agregó correctamente"
         }
+        mensaje_error_existencia = {
+            "Token": as_token,
+            "RespCode": -3,
+            "RespMessage": "Rechazado: Ya existe el registro que pretende crear"
+        }
 
         try:
             myapikey = request.httprequest.headers.get("Authorization")
@@ -41,6 +46,7 @@ class EnrolamientoController(http.Controller):
                 res['token'] = as_token
 
                 product_tmpl = request.env['product.template']
+                production_lot = request.env['stock.production.lot']
                 tipo_prenda = request.env['tipo.prenda']
                 marca = request.env['marca']
                 tamanno = request.env['tamanno']
@@ -48,36 +54,46 @@ class EnrolamientoController(http.Controller):
                 color = request.env['color']
                 genero = request.env['genero']
 
+                location_parent_id = request.env['stock.location'].search(
+                    [('name', '=', post['params']['ubicacionPadre'])], limit=1)
+                location_id = request.env['stock.location'].sudo().search([('name', '=', post['params']['ubicacion'])],
+                                                                          limit=1)
+
+                if location_parent_id:
+                    location_id = request.env['stock.location'].sudo().search(
+                        [('name', '=', post['params']['ubicacion']), ('location_id', '=', location_parent_id.id)],
+                        limit=1)
+
                 for detalle in post['params']['detalleActivos']:
                     product_tmpl_nuevo = product_tmpl.search([('default_code', '=', detalle['SKU'])], limit=1)
                     if not product_tmpl_nuevo:
                         obj_tipo_prenda = tipo_prenda.sudo().search(
-                            [('name', '=', detalle['tipoPrenda'])])
+                            [('name', '=', detalle['tipoPrenda'])], limit=1)
                         if not obj_tipo_prenda:
                             obj_tipo_prenda = tipo_prenda.sudo().create(
                                 {'name': detalle['tipoPrenda']})
 
-                        obj_marca = marca.sudo().search([('name', '=', detalle['marca'])])
+                        obj_marca = marca.sudo().search([('name', '=', detalle['marca'])], limit=1)
                         if not obj_marca:
                             obj_marca = marca.sudo().create({'name': detalle['marca']})
 
                         obj_tamanno = tamanno.sudo().search(
-                            [('name', '=', detalle['tamanno'])])
+                            [('name', '=', detalle['tamanno'])], limit=1)
                         if not obj_tamanno:
                             obj_tamanno = tamanno.sudo().create(
                                 {'name': detalle['tamanno']})
 
                         obj_origen = tipo_prenda.sudo().search(
-                            [('name', '=', detalle['origen'])])
+                            [('name', '=', detalle['origen'])], limit=1)
                         if not obj_origen:
                             obj_origen = origen.sudo().create({'name': detalle['origen']})
 
-                        obj_color = color.sudo().search([('name', '=', detalle['color'])])
+                        obj_color = color.sudo().search([('name', '=', detalle['color'])], limit=1)
                         if not obj_color:
                             obj_color = color.sudo().create({'name': detalle['color']})
 
                         obj_genero = genero.sudo().search(
-                            [('name', '=', detalle['genero'])])
+                            [('name', '=', detalle['genero'])], limit=1)
                         if not obj_genero:
                             obj_genero = genero.sudo().create({'name': detalle['genero']})
 
@@ -100,14 +116,33 @@ class EnrolamientoController(http.Controller):
 
                         })
 
-                    return mensaje_correcto
-                else:
-                    mensaje_error = {
-                        "Token": as_token,
-                        "RespCode": -3,
-                        "RespMessage": "Rechazado: Ya existe el registro que pretende crear"
-                    }
-                    return mensaje_error
+                        quant_id = request.env['stock.quant'].sudo().create({
+                            'product_id': product_tmpl_nuevo.id,
+                            'location_id': location_id.id,
+                            'inventory_quantity': 1.0,
+                            'quantity': 1.0,
+                        })
+
+                        for epc in detalle['DetalleEpc']:
+                            production_lot_nuevo = production_lot.sudo().search([('name', '=', epc['EPCCode'])],
+                                                                                limit=1)
+                            if not production_lot_nuevo:
+                                production_lot_nuevo = production_lot.sudo().create({
+                                    'product_id': product_tmpl_nuevo.id,
+                                    'name': epc['EPCCode'],
+                                    'company_id': request.env.user.company_id.id,
+                                })
+
+                            else:
+                                return mensaje_error_existencia
+
+                            quant_id.write({'lot_id': production_lot_nuevo.id})
+
+                        return mensaje_correcto
+
+
+                    else:
+                        return mensaje_error_existencia
 
         except Exception as e:
             mensaje_error = {
