@@ -28,8 +28,8 @@ class EnrolamientoController(http.Controller):
         }
         mensaje_error_existencia = {
             "Token": as_token,
-            "RespCode": -3,
-            "RespMessage": "Rechazado: Ya existe el registro que pretende crear"
+            "RespCode": 1,
+            "RespMessage": "Activo ya existe no se enrolará"
         }
 
         try:
@@ -65,37 +65,38 @@ class EnrolamientoController(http.Controller):
                         limit=1)
 
                 for detalle in post['params']['detalleActivos']:
+                    obj_tipo_prenda = tipo_prenda.sudo().search(
+                        [('name', '=', detalle['tipoPrenda'])], limit=1)
+                    if not obj_tipo_prenda:
+                        obj_tipo_prenda = tipo_prenda.sudo().create(
+                            {'name': detalle['tipoPrenda']})
+
+                    obj_marca = marca.sudo().search([('name', '=', detalle['marca'])], limit=1)
+                    if not obj_marca:
+                        obj_marca = marca.sudo().create({'name': detalle['marca']})
+
+                    obj_tamanno = tamanno.sudo().search(
+                        [('name', '=', detalle['tamanno'])], limit=1)
+                    if not obj_tamanno:
+                        obj_tamanno = tamanno.sudo().create(
+                            {'name': detalle['tamanno']})
+
+                    obj_origen = tipo_prenda.sudo().search(
+                        [('name', '=', detalle['origen'])], limit=1)
+                    if not obj_origen:
+                        obj_origen = origen.sudo().create({'name': detalle['origen']})
+
+                    obj_color = color.sudo().search([('name', '=', detalle['color'])], limit=1)
+                    if not obj_color:
+                        obj_color = color.sudo().create({'name': detalle['color']})
+
+                    obj_genero = genero.sudo().search(
+                        [('name', '=', detalle['genero'])], limit=1)
+                    if not obj_genero:
+                        obj_genero = genero.sudo().create({'name': detalle['genero']})
+
                     product_tmpl_nuevo = product_tmpl.search([('default_code', '=', detalle['SKU'])], limit=1)
                     if not product_tmpl_nuevo:
-                        obj_tipo_prenda = tipo_prenda.sudo().search(
-                            [('name', '=', detalle['tipoPrenda'])], limit=1)
-                        if not obj_tipo_prenda:
-                            obj_tipo_prenda = tipo_prenda.sudo().create(
-                                {'name': detalle['tipoPrenda']})
-
-                        obj_marca = marca.sudo().search([('name', '=', detalle['marca'])], limit=1)
-                        if not obj_marca:
-                            obj_marca = marca.sudo().create({'name': detalle['marca']})
-
-                        obj_tamanno = tamanno.sudo().search(
-                            [('name', '=', detalle['tamanno'])], limit=1)
-                        if not obj_tamanno:
-                            obj_tamanno = tamanno.sudo().create(
-                                {'name': detalle['tamanno']})
-
-                        obj_origen = tipo_prenda.sudo().search(
-                            [('name', '=', detalle['origen'])], limit=1)
-                        if not obj_origen:
-                            obj_origen = origen.sudo().create({'name': detalle['origen']})
-
-                        obj_color = color.sudo().search([('name', '=', detalle['color'])], limit=1)
-                        if not obj_color:
-                            obj_color = color.sudo().create({'name': detalle['color']})
-
-                        obj_genero = genero.sudo().search(
-                            [('name', '=', detalle['genero'])], limit=1)
-                        if not obj_genero:
-                            obj_genero = genero.sudo().create({'name': detalle['genero']})
 
                         product_tmpl_nuevo = product_tmpl.sudo().create({
                             'name': detalle['nombreActivo'],
@@ -115,7 +116,7 @@ class EnrolamientoController(http.Controller):
                             'type': 'product'
 
                         })
-
+                        request.env.cr.commit()
                         quant_id = request.env['stock.quant'].sudo().create({
                             'product_id': product_tmpl_nuevo.id,
                             'location_id': location_id.id,
@@ -141,8 +142,45 @@ class EnrolamientoController(http.Controller):
                         return mensaje_correcto
 
 
+
                     else:
-                        return mensaje_error_existencia
+                        product_tmpl_nuevo.write({
+                            'name': detalle['nombreActivo'],
+                            'tipo_prenda_id': obj_tipo_prenda.id,
+                            'marca_id': obj_marca.id,
+                            'tamanno_id': obj_tamanno.id,
+                            'origen_id': obj_origen.id,
+                            'color_id': obj_color.id,
+                            'genero_id': obj_genero.id,
+                            'list_price': 1.00,
+                            'standard_price': 0.00,
+                            'use_expiration_date': False,
+                            'tracking': 'serial',
+                            'purchase_ok': True,
+                            'sale_ok': True,
+                            'type': 'product'
+                        })
+                        quant_id = request.env['stock.quant'].sudo().create({
+                            'product_id': product_tmpl_nuevo.id,
+                            'location_id': location_id.id,
+                            'inventory_quantity': 1.0,
+                            'quantity': 1.0,
+                        })
+                        for epc in detalle['DetalleEpc']:
+                            production_lot_nuevo = production_lot.sudo().search([('name', '=', epc['EPCCode'])], limit=1)
+                            if not production_lot_nuevo:
+                                production_lot_nuevo = production_lot.sudo().create({
+                                    'product_id': product_tmpl_nuevo.id,
+                                    'name': epc['EPCCode'],
+                                    'company_id': request.env.user.company_id.id,
+                                })
+                            else:
+                                return mensaje_error_existencia
+                            quant_id.write({'lot_id': production_lot_nuevo.id})
+
+                        return mensaje_correcto
+
+                        # return mensaje_error_existencia
 
         except Exception as e:
             mensaje_error = {
