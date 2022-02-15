@@ -118,7 +118,6 @@ class EnrolamientoController(http.Controller):
                         })
                         request.env.cr.commit()
 
-
                         for epc in detalle['DetalleEpc']:
                             production_lot_nuevo = production_lot.sudo().search([('name', '=', epc['EPCCode'])],
                                                                                 limit=1)
@@ -161,14 +160,10 @@ class EnrolamientoController(http.Controller):
                             'sale_ok': True,
                             'type': 'product'
                         })
-                        quant_id = request.env['stock.quant'].sudo().create({
-                            'product_id': product_tmpl_nuevo.id,
-                            'location_id': location_id.id,
-                            'inventory_quantity': 1.0,
-                            'quantity': 1.0,
-                        })
+
                         for epc in detalle['DetalleEpc']:
-                            production_lot_nuevo = production_lot.sudo().search([('name', '=', epc['EPCCode'])], limit=1)
+                            production_lot_nuevo = production_lot.sudo().search([('name', '=', epc['EPCCode'])],
+                                                                                limit=1)
                             if not production_lot_nuevo:
                                 production_lot_nuevo = production_lot.sudo().create({
                                     'product_id': product_tmpl_nuevo.id,
@@ -177,6 +172,13 @@ class EnrolamientoController(http.Controller):
                                 })
                             else:
                                 return mensaje_error_existencia
+
+                            quant_id = request.env['stock.quant'].sudo().create({
+                                'product_id': product_tmpl_nuevo.id,
+                                'location_id': location_id.id,
+                                'inventory_quantity': 1.0,
+                                'quantity': 1.0,
+                            })
                             quant_id.write({'lot_id': production_lot_nuevo.id})
 
                         return mensaje_correcto
